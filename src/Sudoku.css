@@ -1,0 +1,105 @@
+.app {
+  background-color: #282c34;
+  height: 100vh;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  justify-content: center;
+}
+
+.gameField {
+  background-color: white;
+
+  display: flex;
+  flex-direction: column;
+}
+
+.gameField * {
+  padding: 0;
+  margin: 0;
+}
+
+.row {
+  display: flex;
+  flex-direction: row;
+}
+
+.row-2 {
+  border-bottom: 5px solid grey;
+}
+
+.row-5 {
+  border-bottom: 5px solid grey;
+}
+
+.col-2 {
+  border-right: 5px solid grey;
+}
+
+.col-5 {
+  border-right: 5px solid grey;
+}
+
+.cell {
+  width: min(10vh, 10vw);
+  height: min(10vh, 10vw);
+  font-size: min(10vh, 10vw);
+
+  outline: 1px solid grey;
+
+  background-color: transparent;
+
+  color: #000;
+
+  user-select: none !important;
+
+  overflow: hidden;
+}
+
+.cell .active {
+  text-align: center;
+  font-family: monospace;
+  font-weight: bold;
+  line-height: 1em;
+}
+
+.cell .content {
+  display: flex;
+  flex-direction: column;
+
+  width: 1em;
+  height: 1em;
+}
+
+.cell .frow {
+  display: flex;
+  flex-direction: row;
+}
+
+.cell .fcell {
+  display: inline-block;
+
+  height: 1em;
+  width: 1em;
+  line-height: 1em;
+
+  text-align: center;
+  font-size: 0.33em;
+  font-family: monospace;
+
+  color:grey;
+}
+
+.cell small {
+  font-size: 0.2em;
+}
+
+.cell.hover {
+  background-color: #BBB !important;
+}
+
+.cell.hoverN {
+  background-color: #DDD !important;
+}

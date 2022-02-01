@@ -1,7 +1,29 @@
 <component name="ProjectCodeStyleConfiguration">
   <code_scheme name="Project" version="173">
+    <option name="OTHER_INDENT_OPTIONS">
+      <value>
+        <option name="INDENT_SIZE" value="2" />
+        <option name="TAB_SIZE" value="2" />
+      </value>
+    </option>
+    <option name="LINE_SEPARATOR" value="&#10;" />
     <ScalaCodeStyleSettings>
+      <option name="alwaysUsedImports">
+        <array>
+          <option value="io.circe.generic.auto._" />
+          <option value="io.circe.syntax._" />
+        </array>
+      </option>
+      <option name="SPACES_IN_IMPORTS" value="true" />
+      <option name="SPACES_AROUND_AT_IN_PATTERNS" value="true" />
       <option name="MULTILINE_STRING_CLOSING_QUOTES_ON_NEW_LINE" value="true" />
     </ScalaCodeStyleSettings>
+    <codeStyleSettings language="JavaScript">
+      <indentOptions>
+        <option name="INDENT_SIZE" value="2" />
+        <option name="CONTINUATION_INDENT_SIZE" value="2" />
+        <option name="TAB_SIZE" value="2" />
+      </indentOptions>
+    </codeStyleSettings>
   </code_scheme>
 </component>
