@@ -26,6 +26,10 @@
   flex-direction: row;
 }
 
+.row.numberPicker {
+  margin-bottom: 4vh;
+}
+
 .row-2 {
   border-bottom: 5px solid grey;
 }
@@ -43,9 +47,9 @@
 }
 
 .cell {
-  width: min(10vh, 10vw);
-  height: min(10vh, 10vw);
-  font-size: min(10vh, 10vw);
+  width: min(8vh, 10vw);
+  height: min(8vh, 10vw);
+  font-size: min(8vh, 10vw);
 
   outline: 1px solid grey;
 
@@ -63,6 +67,11 @@
   font-family: monospace;
   font-weight: bold;
   line-height: 1em;
+}
+
+.cell .content.highlight {
+  color: #6666ff;
+  font-weight: bold;
 }
 
 .cell .content {
@@ -92,14 +101,33 @@
   color:grey;
 }
 
+.cell .fcell.highlight {
+  color: black;
+  font-weight: bold;
+}
+
 .cell small {
   font-size: 0.2em;
 }
 
-.cell.hover {
-  background-color: #BBB !important;
+.cell .picker {
+  background-color: white;
 }
 
-.cell.hoverN {
-  background-color: #DDD !important;
+.cell .picker-selected {
+  background-color: beige;
+}
+
+
+.cell.hovered {
+  background-color: #BBB;
+}
+
+.cell.hovered-neighbor {
+  background-color: #DDD;
+}
+
+.cell.invalid {
+  background-color: #FDD !important;
+  color: #ff0000 !important;
 }
