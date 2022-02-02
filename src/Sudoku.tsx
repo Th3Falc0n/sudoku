@@ -1,10 +1,11 @@
 import React, {RefObject} from "react";
 import "./Sudoku.css"
+import SudokuSolver from "./Solver";
+import {json} from "stream/consumers";
 
 type CellProps = {
     x: number;
     y: number;
-    given?: number;
     playingField: Sudoku;
 }
 
@@ -22,6 +23,7 @@ enum HoverType {
 
 type CellState = {
     value: number;
+    editable: boolean;
     proposed: Set<number>;
     errors: Set<ErrorType>;
     hoverState: HoverType;
@@ -31,7 +33,8 @@ class Cell extends React.Component<CellProps, CellState> {
     constructor(props: CellProps) {
         super(props);
         this.state = {
-            value: props.given || 0,
+            value: 0,
+            editable: true,
             proposed: new Set(),
             errors: new Set(),
             hoverState: HoverType.NONE
@@ -39,13 +42,27 @@ class Cell extends React.Component<CellProps, CellState> {
         this.reset();
     }
 
-    reset = () => {
-        this.setState({
-            value: this.props.given || 0,
-            proposed: new Set<number>([]),
-            errors: new Set<ErrorType>(),
-            hoverState: HoverType.NONE
-        });
+    reset = async (hard?: boolean) => {
+        if(hard) {
+            return new Promise(resolve =>
+                this.setState(state => ({
+                    value: 0,
+                    editable: true,
+                    proposed: new Set(),
+                    errors: new Set(),
+                    hoverState: HoverType.NONE
+                }), () => resolve(null))
+            );
+        }
+        return new Promise(resolve =>
+            this.setState(state => ({
+                value: state.editable ? 0 : state.value,
+                editable: state.editable,
+                proposed: new Set(),
+                errors: new Set(),
+                hoverState: HoverType.NONE
+            }), () => resolve(null))
+        );
     }
 
     getColumnSet = (): Set<number> => {
@@ -126,9 +143,9 @@ class Cell extends React.Component<CellProps, CellState> {
         return !columnSet.has(n) && !rowSet.has(n) && !squareSet.has(n);
     }
 
-    setValue = (n: number) => {
-        this.setState({value: n});
-    }
+    setValue = async (n: number, disableEdit?: boolean) => new Promise (resolve => {
+        this.setState({value: n, editable: !(disableEdit as boolean)}, () => resolve(null));
+    })
 
     informUpdate = (event: string) => {
         switch (event) {
@@ -148,8 +165,8 @@ class Cell extends React.Component<CellProps, CellState> {
         }
     }
 
-    onClick = () => {
-        if(this.props.given) return;
+    setProposal = () => {
+        if(!this.state.editable) return;
 
         this.setState(
             state => {
@@ -170,21 +187,19 @@ class Cell extends React.Component<CellProps, CellState> {
         );
     }
 
-    onDoubleClick = (e: React.MouseEvent) => {
+    setActive = (e: React.MouseEvent) => {
         e.preventDefault()
-        if(this.props.given) return;
+        if(!this.state.editable) return;
 
         this.setState(
             state => {
                 if(state.value !== this.props.playingField.state.pickerSelected) {
                     return {
-                        value: this.props.playingField.state.pickerSelected,
-                        proposed: new Set<number>([this.props.playingField.state.pickerSelected])
+                        value: this.props.playingField.state.pickerSelected
                     }
                 } else {
                     return {
-                        value: 0,
-                        proposed: new Set<number>([])
+                        value: 0
                     }
                 }
             },
@@ -219,7 +234,7 @@ class Cell extends React.Component<CellProps, CellState> {
         return [
             "cell",
             "col-" + this.props.x, "row-" + this.props.y,
-            (this.state.errors.size > 0 && !this.props.given) ? "invalid" : "valid",
+            (this.state.errors.size > 0) ? "invalid" : "valid",
             this.state.hoverState === HoverType.HOVERED ? "hovered" : "",
             this.state.hoverState === HoverType.HOVERED_NEIGHBOR ? "hovered-neighbor" : ""
         ].join(" ")
@@ -246,28 +261,26 @@ class Cell extends React.Component<CellProps, CellState> {
         return <div className="content">{elements}</div>;
     }
 
-    render = () => {
-        return (
-            <div
-                className={this.buildCSSClasses()}
-                onClick={this.onClick}
-                onContextMenu={this.onDoubleClick}
-                onDoubleClick={this.onDoubleClick}
-                onMouseEnter={this.mouseEnter}
-                onMouseLeave={this.mouseLeave}
-            >
-                {this.state.value !== 0 ? this.renderWithNumber() : this.renderProposals()}
-            </div>
-        );
-    }
+    render = () =>
+        <div
+            className={this.buildCSSClasses()}
+            onClick={this.setProposal}
+            onContextMenu={this.setActive}
+            onDoubleClick={this.setActive}
+            onMouseEnter={this.mouseEnter}
+            onMouseLeave={this.mouseLeave}
+        >
+            {this.state.value !== 0 ? this.renderWithNumber() : this.renderProposals()}
+        </div>
 }
 
 type SudokuProps = {
 };
 
 type SudokuState = {
-    field: RefObject<Cell>[][];
+    board: RefObject<Cell>[][];
     pickerSelected: number;
+    solver: SudokuSolver;
 };
 
 class Sudoku extends React.Component<SudokuProps, SudokuState> {
@@ -275,8 +288,9 @@ class Sudoku extends React.Component<SudokuProps, SudokuState> {
         super(props);
 
         this.state = {
-            field: [],
-            pickerSelected: 1
+            board: [],
+            pickerSelected: 1,
+            solver: new SudokuSolver(this)
         };
 
         for(let i = 0; i < 9; i++) {
@@ -284,7 +298,7 @@ class Sudoku extends React.Component<SudokuProps, SudokuState> {
             for(let j = 0; j < 9; j++) {
                 row.push(React.createRef<Cell>());
             }
-            this.state.field.push(row);
+            this.state.board.push(row);
         }
     }
 
@@ -319,22 +333,13 @@ class Sudoku extends React.Component<SudokuProps, SudokuState> {
                     this.setState(state => ({ pickerSelected: 9 }));
                     break;
                 case "f":
-                    for(let x = 0; x < 9; x++) {
-                        for(let y = 0; y < 9; y++) {
-                            this.state.field[x][y].current?.setProposedToAllAvailable();
-                        }
-                    }
+                    this.hints();
                     break;
                 case "r":
                     this.reset();
                     break;
-                case "s":
-                    this.solve();
-                    break;
                 case "g":
-                    this.reset();
-                    this.solve();
-                    this.removeRandom(150)
+                    this.generate();
                     break;
             }
         }
@@ -361,11 +366,16 @@ class Sudoku extends React.Component<SudokuProps, SudokuState> {
 
     render = () => {
         return <>
+            <div className="row legend">
+                <div onClick={this.generate}>g - Generate new sudoku</div>
+                <div onClick={() => this.reset()}>r - Reset sudoku</div>
+                <div onClick={this.hints}>f - Fill all cells with hints</div>
+            </div>
             <div className="row numberPicker">
                 <this.picker />
             </div>
             <div className="gameField">
-                {this.state.field.map((row, y) => (
+                {this.state.board.map((row, y) => (
                     <div className="row" key={y}>
                         {row.map((cell, x) => (
                             <Cell x={x} y={y} playingField={this} ref={cell}/>
@@ -376,73 +386,84 @@ class Sudoku extends React.Component<SudokuProps, SudokuState> {
         </>;
     }
 
-    reset = () => {
+    hints = () => {
         for(let x = 0; x < 9; x++) {
             for(let y = 0; y < 9; y++) {
-                this.state.field[x][y].current?.reset();
+                this.state.board[x][y].current?.setProposedToAllAvailable();
             }
         }
     }
 
-    arrayShuffle = (array: number[]) => {
-        let currentIndex = array.length, randomIndex;
-
-        while (currentIndex !== 0) {
-            randomIndex = Math.floor(Math.random() * currentIndex);
-            currentIndex--;
-
-            [array[currentIndex], array[randomIndex]] = [
-                array[randomIndex], array[currentIndex]];
-        }
-
-        return array;
-    }
-
-    solve = (x?: number, y?: number): boolean => {
-        x = x || 0;
-        y = y || 0;
-
-        if(x === 9) {
-            x = 0;
-            y++;
-        }
-
-        if(y === 9) {
-            return true;
-        }
-
-        if(this.state.field[x][y].current?.state.value !== 0) {
-            return this.solve(x + 1, y);
-        }
-
-        let stepBias = this.arrayShuffle([1, 2, 3, 4, 5, 6, 7, 8, 9]);
-
-        for(let i = 1; i <= 9; i++) {
-            let biasedValue = stepBias[i - 1];
-
-            if(this.state.field[x][y].current?.isAvailable(biasedValue)) {
-                this.state.field[x][y].current?.setValue(biasedValue);
-                if(this.solve(x + 1, y)) {
-                    return true;
-                }
-                this.state.field[x][y].current?.reset();
+    reset = async (hard?: boolean) => {
+        for (let x = 0; x < 9; x++) {
+            for (let y = 0; y < 9; y++) {
+                await this.state.board[x][y].current?.reset(hard);
             }
         }
-
-        return false;
     }
 
-    removeRandom = (amount: number) => {
-        for(let i = 0; i < amount; i++) {
-            let x = Math.floor(Math.random() * 9);
-            let y = Math.floor(Math.random() * 9);
+    generate = async () => {
+        await this.reset(true);
+        this.state.solver.solve();
+        for (let x = 0; x < 9; x++) {
+            for (let y = 0; y < 9; y++) {
+                await this.state.board[x][y].current?.setValue(this.state.solver.board[x][y], true);
+            }
+        }
+        await this.removeRandom(50);
+    }
 
-            this.state.field[x][y].current?.reset();
+    removeRandom = async (amount: number) => {
+        for(let i = amount; i > 0;) {
+            let oldNumber = 0, x, y;
+
+            do {
+                x = Math.floor(Math.random() * 9);
+                y = Math.floor(Math.random() * 9);
+
+                oldNumber = this.state.board[x][y].current?.state.value as number;
+            } while (oldNumber === 0)
+
+            await this.state.board[x][y].current?.reset(true);
+            let solutions = this.state.solver.approximateNumberOfSolutions()
+
+            console.log("Left: " + i + " | " + solutions + " solutions");
+
+            if(solutions === 1) {
+                i--;
+            }
+            else {
+                await this.state.board[x][y].current?.setValue(oldNumber, true);
+            }
+        }
+    }
+
+    toBoardString = () => {
+        let saveBoard = [];
+
+        for(let x = 0; x < 9; x++) {
+            let row = [];
+            for(let y = 0; y < 9; y++) {
+                row.push(this.state.board[x][y].current?.state as CellState);
+            }
+            saveBoard.push(row);
+        }
+
+        return JSON.stringify(saveBoard);
+    }
+
+    fromBoardString = (boardString: string) => {
+        let board = JSON.parse(boardString);
+
+        for(let x = 0; x < 9; x++) {
+            for(let y = 0; y < 9; y++) {
+                this.state.board[x][y].current?.setState(board[x][y] as CellState);
+            }
         }
     }
 
     getCell = (x: number, y: number) => {
-        return this.state.field[y][x];
+        return this.state.board[y][x];
     }
 
     updateColumn = (x: number, y: number, event: string) => {
@@ -451,14 +472,14 @@ class Sudoku extends React.Component<SudokuProps, SudokuState> {
             if (iy === y) {
                 continue;
             }
-            numbers.add(this.state.field[iy][x].current?.state.value as number);
+            numbers.add(this.state.board[iy][x].current?.state.value as number);
         }
 
         for(let iy = 0; iy < 9; iy++) {
             if(iy === y) {
                 continue;
             }
-            this.state.field[iy][x].current?.informUpdate(event)
+            this.state.board[iy][x].current?.informUpdate(event)
         }
     }
 
@@ -467,7 +488,7 @@ class Sudoku extends React.Component<SudokuProps, SudokuState> {
             if(ix === x) {
                 continue;
             }
-            this.state.field[y][ix].current?.informUpdate(event)
+            this.state.board[y][ix].current?.informUpdate(event)
         }
     }
 
@@ -482,7 +503,7 @@ class Sudoku extends React.Component<SudokuProps, SudokuState> {
                 if (i === x && j === y) {
                     continue;
                 }
-                numbers.add(this.state.field[j][i].current?.state.value as number);
+                numbers.add(this.state.board[j][i].current?.state.value as number);
             }
         }
 
@@ -491,7 +512,7 @@ class Sudoku extends React.Component<SudokuProps, SudokuState> {
                 if (i === x && j === y) {
                     continue;
                 }
-                this.state.field[j][i].current?.informUpdate(event)
+                this.state.board[j][i].current?.informUpdate(event)
             }
         }
     }

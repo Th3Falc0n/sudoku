@@ -1,3 +1,7 @@
+body {
+  overflow-y:hidden;
+}
+
 .app {
   background-color: #282c34;
   height: 100vh;
@@ -28,6 +32,37 @@
 
 .row.numberPicker {
   margin-bottom: 4vh;
+}
+
+.row.legend {
+  display: flex;
+  flex-direction: row;
+
+  padding: 1em;
+}
+
+.row.legend div {
+  display:inline-block;
+
+  margin: 0.2em 0.5em;
+  padding: 0.2em 0.5em;
+
+  align-items: center;
+  justify-content: center;
+
+  background:linear-gradient(to bottom, #33bdef 5%, #019ad2 100%);
+
+  border-radius:6px;
+  cursor:pointer;
+  color:#ffffff;
+  font-family:monospace;
+  font-size:15px;
+  font-weight:bold;
+  text-decoration:none;
+}
+
+.row.legend div:hover {
+  background:linear-gradient(to bottom, #019ad2 5%, #33bdef 100%);
 }
 
 .row-2 {
@@ -115,9 +150,8 @@
 }
 
 .cell .picker-selected {
-  background-color: beige;
+  background-color: burlywood;
 }
-
 
 .cell.hovered {
   background-color: #BBB;
